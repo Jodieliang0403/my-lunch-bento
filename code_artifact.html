@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>我的午餐餐盒 - 自己的便當自己夾！</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: 圓體/美式街機粗體感字體 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Zen+Maru+Gothic:wght@700;900&family=Noto+Sans+TC:wght@700;900&display=swap" rel="stylesheet">
+  <!-- HTML2Canvas: 精準截圖並保留真實餐盒與食材效果 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            maru: ['"Fredoka"', '"Zen Maru Gothic"', '"Noto Sans TC"', 'sans-serif'],
+          },
+          colors: {
+            ocOrange: '#FF6B00',
+            ocOrangeDark: '#CC4E00',
+            ocBlue: '#0077E6',
+            ocBlueDark: '#004B99',
+            ocSky: '#DFF2FF',
+            ocInk: '#102542',
+            ocCream: '#FFFDF5',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Fredoka', 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 美式廚房磁磚格紋底紋 (Overcooked 藍白清爽廚房風) */
+    .kitchen-tiles {
+      background-color: #E3F3FF;
+      background-image: 
+        linear-gradient(to right, rgba(0, 119, 230, 0.12) 2px, transparent 2px),
+        linear-gradient(to bottom, rgba(0, 119, 230, 0.12) 2px, transparent 2px);
+      background-size: 36px 36px;
+    }
+
+    /* 煮過頭美式粗框 + 硬邊立體陰影卡片 */
+    .oc-panel {
+      border: 3px solid #102542;
+      box-shadow: 0 5px 0 #102542;
+    }
+
+    .oc-card-sm {
+      border: 2.5px solid #102542;
+      box-shadow: 0 3px 0 #102542;
+    }
+
+    /* 煮過頭風格立體街機按鈕 */
+    .cute-btn {
+      border: 2.5px solid #102542;
+      box-shadow: 0 4px 0 #102542;
+      transition: all 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .cute-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 0 #102542;
+    }
+    .cute-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #102542;
+    }
+
+    /* 鐵便當盒質感 (強化美式卡通輪廓) */
+    .bento-iron {
+      background: linear-gradient(145deg, #F0F6FC 0%, #C6D6E6 48%, #A6BDD4 52%, #E3EDF7 100%);
+      box-shadow: 
+        inset 0 5px 10px rgba(255, 255, 255, 0.9),
+        inset 0 -6px 12px rgba(16, 37, 66, 0.25),
+        0 10px 0 #102542,
+        0 18px 25px rgba(16, 37, 66, 0.28);
+      border: 5px solid #102542;
+    }
+
+    /* 木質/竹便當盒質感 (美式粗黑邊) */
+    .bento-wood {
+      background-color: #FFE4B5;
+      background-image: repeating-linear-gradient(45deg, rgba(255, 107, 0, 0.08) 0px, rgba(255, 107, 0, 0.08) 8px, transparent 8px, transparent 16px);
+      box-shadow: 
+        inset 0 4px 8px rgba(255,255,255,0.8),
+        inset 0 -6px 12px rgba(180, 83, 9, 0.22),
+        0 10px 0 #102542,
+        0 18px 25px rgba(16, 37, 66, 0.25);
+      border: 5px solid #102542;
+    }
+
+    /* 現代清新分隔餐盒 (藍橘廚房撞色) */
+    .bento-modern {
+      background: #FFFFFF;
+      box-shadow: 
+        inset 0 4px 8px rgba(0, 119, 230, 0.1),
+        inset 0 -6px 14px rgba(16, 37, 66, 0.08),
+        0 10px 0 #102542,
+        0 18px 25px rgba(16, 37, 66, 0.25);
+      border: 5px solid #102542;
+    }
+
+    /* 隱藏滾動條但保持滾動 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 食物手繪感線條與漫畫陰影效果 */
+    .food-svg {
+      filter: drop-shadow(3px 5px 0px rgba(16, 37, 66, 0.22));
+      transition: filter 0.15s ease;
+      cursor: grab;
+    }
+    .food-svg:active {
+      cursor: grabbing;
+      filter: drop-shadow(5px 8px 0px rgba(16, 37, 66, 0.35));
+    }
+    .food-svg.selected {
+      outline: 3.5px dashed #FF6B00;
+      outline-offset: 5px;
+      filter: drop-shadow(0 0 12px rgba(255, 107, 0, 0.65));
+    }
+
+    /* 訂單紙鋸齒上緣效果 */
+    .order-ticket {
+      background: #FFFDF5;
+      border: 3px solid #102542;
+      box-shadow: 0 4px 0 #102542;
+      position: relative;
+    }
+  </style>
+</head>
+
+<body class="kitchen-tiles min-h-screen text-[#102542] flex flex-col justify-between overflow-x-hidden selection:bg-orange-300">
+
+  <!-- 頂部導航列 (煮過頭亮橘主視覺橫幅) -->
+  <header class="bg-[#FF6B00] border-b-4 border-[#102542] sticky top-0 z-40 px-4 py-2.5 shadow-md">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-11 h-11 rounded-2xl bg-[#0077E6] border-[3px] border-[#102542] shadow-[0_3px_0_#102542] flex items-center justify-center text-2xl rotate-[-4deg]">
+          🍱
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-black text-white tracking-wider drop-shadow-[2px_2px_0_#102542]">我的午餐餐盒</h1>
+            <span class="hidden md:inline-block bg-[#FFE600] text-[#102542] text-[10px] font-black px-2 py-0.5 rounded-md border-2 border-[#102542] rotate-[3deg]">KITCHEN RUSH!</span>
+          </div>
+          <p class="text-xs text-orange-100 font-black hidden sm:block drop-shadow-[1px_1px_0_#102542]">出餐倒數開始！我的午餐餐盒我決定！</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- 重新裝盒 -->
+        <button id="clearBtn" class="cute-btn flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-sky-50 text-[#102542] font-black text-xs md:text-sm rounded-xl">
+          <i class="fa-solid fa-rotate-left text-[#0077E6]"></i>
+          <span>重夾</span>
+        </button>
+        <!-- 結帳/完成出餐 -->
+        <button id="finishBtn" class="cute-btn flex items-center gap-1.5 px-4 py-1.5 bg-[#0077E6] hover:bg-[#0066CC] text-white font-black text-xs md:text-sm rounded-xl">
+          <i class="fa-solid fa-bell-concierge text-[#FFE600]"></i>
+          <span>叮咚！出餐開動</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主遊戲內容區 -->
+  <main class="max-w-5xl w-full mx-auto p-3 sm:p-5 flex-1 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5">
+    
+    <!-- 左側/中央：便當展示與擺放舞台 -->
+    <div class="w-full flex-1 flex flex-col items-center">
+      
+      <!-- 便當外觀切換選擇器 (步驟 1：美式廚房備餐台卡片) -->
+      <div class="w-full max-w-lg mb-3 bg-white oc-panel rounded-2xl p-2.5">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <span id="boxStatLabel" class="text-[11px] bg-[#0077E6] text-white font-black px-2.5 py-0.5 rounded-full border-2 border-[#102542]">圓形四格鐵便當盒</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <!-- 圓形四格鐵盒 -->
+          <button class="box-type-btn active flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all" data-box="iron-round">
+            <div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-[#102542] mb-1 grid grid-cols-2 grid-rows-2 p-1 gap-0.5 shadow-inner overflow-hidden">
+              <div class="bg-[#0077E6]/30 rounded-tl-full"></div>
+              <div class="bg-[#FF6B00]/30 rounded-tr-full"></div>
+              <div class="bg-[#FF6B00]/30 rounded-bl-full"></div>
+              <div class="bg-[#0077E6]/30 rounded-br-full"></div>
+            </div>
+            <span class="text-xs font-black text-[#102542] leading-tight">圓形鐵盒</span>
+          </button>
+          
+          <!-- 方形四格鐵盒 -->
+          <button class="box-type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all" data-box="iron-rect">
+            <div class="w-10 h-8 rounded-lg bg-slate-200 border-2 border-[#102542] mb-1 grid grid-cols-2 grid-rows-2 p-1 gap-0.5 shadow-inner">
+              <div class="bg-[#0077E6]/30 rounded-xs"></div>
+              <div class="bg-[#FF6B00]/30 rounded-xs"></div>
+              <div class="bg-[#FF6B00]/30 rounded-xs"></div>
+              <div class="bg-[#0077E6]/30 rounded-xs"></div>
+            </div>
+            <span class="text-xs font-black text-[#102542] leading-tight">方形鐵盒</span>
+          </button>
+
+          <!-- 日式四格木盒 -->
+          <button class="box-type-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all" data-box="wood-oval">
+            <div class="w-10 h-8 rounded-xl bg-amber-200 border-2 border-[#102542] mb-1 grid grid-cols-2 grid-rows-2 p-1 gap-0.5 shadow-inner">
+              <div class="bg-amber-500/30 rounded-xs"></div>
+              <div class="bg-orange-500/30 rounded-xs"></div>
+              <div class="bg-orange-500/30 rounded-xs"></div>
+              <div class="bg-amber-500/30 rounded-xs"></div>
+            </div>
+            <span class="text-xs font-black text-[#102542] leading-tight">日式木盒</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 今日菜單明細列 (煮過頭出餐訂單紙風格) -->
+      <div class="w-full max-w-lg mb-2.5 order-ticket rounded-2xl overflow-hidden">
+        <!-- 訂單頂部色條 -->
+        <div class="bg-[#0077E6] px-3 py-1 border-b-2 border-[#102542] flex items-center justify-between">
+          <span class="text-xs font-black text-white flex items-center gap-1.5 tracking-wide">
+            <i class="fa-solid fa-receipt text-[#FFE600]"></i> ORDER #01 今日出餐菜單明細
+          </span>
+          <span id="menuCountBadge" class="text-[10px] bg-white text-[#102542] font-black px-2 py-0.5 rounded-full border border-[#102542]">尚未夾菜</span>
+        </div>
+        <div id="selectedMenuList" class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto no-scrollbar p-2.5">
+          <span class="text-[11px] text-slate-500 font-bold italic px-1">點擊右側食材區備料入盒，出餐明細會同步顯示於此！</span>
+        </div>
+      </div>
+
+      <!-- 便當盒操作盤（主互動料理台舞台） -->
+      <div class="relative w-full max-w-[390px] h-[375px] sm:h-[415px] flex items-center justify-center p-2">
+        
+        <!-- 便當外盒容器 -->
+        <div id="bentoBox" class="relative w-[340px] h-[340px] sm:w-[370px] sm:h-[370px] rounded-full bento-iron transition-all duration-300 overflow-hidden flex items-center justify-center">
+          
+          <!-- 便當內槽背景（陰影與內分隔層） -->
+          <div id="boxInterior" class="w-[93%] h-[93%] rounded-full relative overflow-hidden bg-[#FFFDF7] shadow-inner flex items-center justify-center border-2 border-[#102542]/20">
+            
+            <!-- 分隔線容器 (所有餐盒皆採用四格分隔) -->
+            <div id="dividerLayout" class="absolute inset-0 pointer-events-none z-0">
+              <div id="dividerGrid" class="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 p-4">
+                <div class="slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-tl-full bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black">SLOT 1</div>
+                <div class="slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-tr-full bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black">SLOT 2</div>
+                <div class="slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-bl-full bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black">SLOT 3</div>
+                <div class="slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-br-full bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black">SLOT 4</div>
+              </div>
+            </div>
+
+            <!-- 便當內容物圖層容器 (所有食材物件生成於此) -->
+            <div id="foodStage" class="absolute inset-0 z-10 overflow-hidden">
+              <!-- 食物元件將以填滿/適配網格方式動態插入 -->
+            </div>
+
+            <!-- 空白提示浮水印 -->
+            <div id="emptyHint" class="absolute inset-0 flex flex-col items-center justify-center text-[#102542]/45 pointer-events-none select-none">
+              <span class="text-4xl mb-1">🍳</span>
+              <p class="text-xs font-black">點選食材開始裝盤！</p>
+              <p class="text-[10px] font-bold opacity-80">自動滿版適配・我的午餐餐盒我決定！</p>
+            </div>
+
+          </div>
+
+          <!-- 便當邊緣光澤高光效果 -->
+          <div class="absolute inset-0 rounded-[inherit] pointer-events-none bg-gradient-to-tr from-white/30 via-transparent to-black/10 mix-blend-overlay"></div>
+        </div>
+
+        <!-- 選取中物件的精簡控制列 (煮過頭橘藍懸浮工具條) -->
+        <div id="floatingToolbar" class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#102542] text-white px-3.5 py-1.5 rounded-full shadow-[0_4px_0_#FF6B00] border-2 border-white hidden flex-row items-center gap-2 z-30 transition-all">
+          <span class="text-[11px] font-black text-[#FFE600] pr-1.5 border-r border-slate-600" id="selectedFoodName">食材</span>
+          
+          <!-- 旋轉 -->
+          <button id="btnRotate" title="旋轉擺向" class="w-7 h-7 rounded-full bg-[#0077E6] hover:bg-sky-500 text-white flex items-center justify-center text-xs font-black border border-white/40">
+            <i class="fa-solid fa-arrow-rotate-right"></i>
+          </button>
+          <!-- 翻面 -->
+          <button id="btnFlip" title="左右對調" class="w-7 h-7 rounded-full bg-[#0077E6] hover:bg-sky-500 text-white flex items-center justify-center text-xs font-black border border-white/40">
+            <i class="fa-solid fa-arrows-left-right"></i>
+          </button>
+          <!-- 圖層往上 -->
+          <button id="btnLayerUp" title="移到最上層" class="w-7 h-7 rounded-full bg-[#FF6B00] hover:bg-orange-500 text-white flex items-center justify-center text-xs font-black border border-white/40">
+            <i class="fa-solid fa-layer-group"></i>
+          </button>
+          <!-- 刪除 -->
+          <button id="btnDelete" title="移除此食材" class="w-7 h-7 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center text-xs font-black border border-white/40">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- 當前便當即時營養/趣味概況卡片 -->
+      <div class="w-full max-w-lg mt-2 px-3.5 py-2 bg-white oc-card-sm rounded-xl flex items-center justify-between text-xs text-[#102542]">
+        <div class="flex items-center gap-2">
+          <span class="font-black">菜色：<span id="foodCount" class="font-black text-[#FF6B00] text-sm">0</span> 樣</span>
+          <span class="text-slate-300 font-black">|</span>
+          <span class="font-black">熱量：<span id="caloriesCount" class="font-black text-[#0077E6] text-sm">0</span> kcal</span>
+        </div>
+        <div class="text-[11px] bg-sky-100 text-[#102542] px-2 py-0.5 rounded-lg font-black border border-[#102542]/20">
+          🍖 <span id="meatCount">0</span> 肉 / 🥬 <span id="vegCount">0</span> 菜
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 右側/下方：自助餐菜色自選盤 (步驟 2：美式廚房備料區) -->
+    <div class="w-full lg:w-[465px] bg-white rounded-3xl p-3.5 sm:p-4 oc-panel flex flex-col max-h-[550px]">
+      
+      <div class="flex items-center justify-between mb-2 px-1">
+        <span class="text-xs font-black text-[#102542] flex items-center gap-1.5">
+          <span class="bg-[#0077E6] text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] border-2 border-[#102542]">2</span>
+          廚房備料區（點擊夾入餐盒）
+        </span>
+        <span class="text-[10px] font-black text-[#FF6B00]">HOT & FRESH!</span>
+      </div>
+
+      <!-- 分類標籤切換 -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2.5 border-b-2 border-[#102542]/10">
+        <button class="category-btn active px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all border-2 border-[#102542]" data-cat="staple">
+          🍚 主食
+        </button>
+        <button class="category-btn px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all text-[#102542] bg-sky-100 hover:bg-sky-200 border-2 border-[#102542]" data-cat="main">
+          🍗 霸氣主菜
+        </button>
+        <button class="category-btn px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all text-[#102542] bg-sky-100 hover:bg-sky-200 border-2 border-[#102542]" data-cat="sides">
+          🥦 靈魂配菜
+        </button>
+        <button class="category-btn px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all text-[#102542] bg-sky-100 hover:bg-sky-200 border-2 border-[#102542]" data-cat="egg">
+          🍳 蛋與小點
+        </button>
+        <button class="category-btn px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all text-[#102542] bg-sky-100 hover:bg-sky-200 border-2 border-[#102542]" data-cat="tag">
+          🏷️ 趣味字卡
+        </button>
+      </div>
+
+      <!-- 食材選項格狀陳列區 -->
+      <div id="foodList" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 gap-2.5 overflow-y-auto pt-3 pr-1 flex-1">
+        <!-- 食材按鈕由 JS 動態產生 -->
+      </div>
+
+      <!-- 底部小提示 -->
+      <div class="mt-2.5 pt-2 border-t-2 border-[#102542]/10 text-[11px] text-[#102542]/75 flex items-center justify-between font-bold">
+        <span>💡 拖曳可自由微調並自動對齊格子</span>
+        <span class="text-[#0077E6] font-black">我的午餐餐盒我決定</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="text-center py-2.5 text-xs text-[#102542]/70 font-black">
+    🍱 我的午餐餐盒・LINE 貼圖風互動小遊戲 — 我的午餐餐盒我決定！
+  </footer>
+
+  <!-- 完成開動結算彈窗 (煮過頭三星通關出餐卡) -->
+  <div id="resultModal" class="fixed inset-0 bg-[#102542]/75 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#FFFDF5] w-full max-w-md rounded-3xl oc-panel overflow-hidden animate-[bounce_0.35s_ease-out]">
+      
+      <!-- 彈窗頂部通關橫幅 -->
+      <div class="bg-[#FF6B00] px-5 py-3.5 border-b-4 border-[#102542] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🔔</span>
+          <h2 class="text-lg font-black text-white tracking-wider drop-shadow-[2px_2px_0_#102542]">出餐成功！開動啦！</h2>
+        </div>
+        <button id="closeModalBtn" class="w-8 h-8 rounded-full bg-white hover:bg-rose-500 hover:text-white text-[#102542] font-black border-2 border-[#102542] flex items-center justify-center transition-colors">
+          ✕
+        </button>
+      </div>
+
+      <!-- 彈窗內容與三星評價區 -->
+      <div class="p-4 sm:p-5 flex flex-col items-center text-center max-h-[82vh] overflow-y-auto no-scrollbar">
+        <div class="flex items-center gap-1.5 text-2xl mb-1 drop-shadow-[0_2px_0_#102542]">
+          <span>⭐</span><span>⭐</span><span>⭐</span>
+        </div>
+        <h3 id="bentoTitle" class="text-lg sm:text-xl font-black text-[#102542] tracking-wide">特製開動便當！</h3>
+        <p id="bentoReview" class="text-xs font-bold text-slate-600 mt-0.5 mb-2.5 px-2">我的午餐餐盒我決定！開動啦，每一口都超滿足～</p>
+
+        <!-- 便當縮圖預覽 (含餐盒 + 揀選菜色整理小立牌) -->
+        <div class="my-1 p-2.5 bg-sky-100/80 rounded-3xl border-2 border-dashed border-[#0077E6]/50 flex flex-col items-center gap-2.5 w-full">
+          <div id="cardBoxClone" class="w-48 h-48 sm:w-56 sm:h-56 relative overflow-hidden flex items-center justify-center"></div>
+          
+          <!-- 揀選菜色整理小立牌 -->
+          <div class="w-full bg-white border-[2.5px] border-[#102542] rounded-2xl p-2.5 shadow-[0_3px_0_#102542] text-left relative">
+            <div class="flex items-center justify-between border-b-2 border-dashed border-[#102542]/20 pb-1 mb-1.5">
+              <span class="text-[11px] font-black text-[#FF6B00] flex items-center gap-1">
+                <i class="fa-solid fa-utensils"></i> 今日菜色小立牌
+              </span>
+              <span class="text-[10px] font-black bg-[#FFE600] text-[#102542] px-2 py-0.5 rounded-full border border-[#102542]">我的午餐餐盒我決定</span>
+            </div>
+            <div id="cardMenuSummary" class="flex flex-wrap gap-1 text-[11px] font-black text-[#102542]">
+              <!-- 由 JS 動態填入已選菜色標籤 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 便當規格標籤 -->
+        <div class="flex items-center gap-2 mt-2 text-xs font-black">
+          <span id="cardBoxTypeName" class="bg-[#FFE600] text-[#102542] px-3 py-1 rounded-full border-2 border-[#102542]">圓形四格鐵便當盒</span>
+          <span class="bg-[#0077E6] text-white px-3 py-1 rounded-full border-2 border-[#102542]">熱量約 <span id="cardTotalCalories">0</span> kcal</span>
+        </div>
+
+        <!-- 操作按鈕組 -->
+        <div class="w-full grid grid-cols-2 gap-2.5 mt-4">
+          <button id="downloadPngBtn" class="cute-btn col-span-2 py-2.5 px-4 bg-[#FF6B00] hover:bg-orange-500 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2">
+            <i class="fa-solid fa-download"></i>
+            <span>一鍵下載便當貼圖 (PNG)</span>
+          </button>
+          <button id="shareCopyBtn" class="cute-btn col-span-2 py-2 px-4 bg-[#0077E6] hover:bg-sky-600 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-copy"></i>
+            <span>複製今日便當短評</span>
+          </button>
+        </div>
+        <span id="copyFeedback" class="text-[11px] font-black text-emerald-600 mt-1.5 opacity-0 transition-opacity">✅ 已複製到剪貼簿！快貼給朋友炫耀吧！</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 餐盒樣式預設資料庫 (全數四格分隔配置)
+    const BOX_PRESETS = {
+      'iron-round': {
+        name: '圓形四格鐵便當盒',
+        boxClass: 'rounded-full bento-iron',
+        interiorClass: 'rounded-full',
+        hasDividers: true,
+        isRound: true
+      },
+      'iron-rect': {
+        name: '方形四格鐵便當盒',
+        boxClass: 'rounded-3xl bento-iron',
+        interiorClass: 'rounded-2xl',
+        hasDividers: true,
+        isRound: false
+      },
+      'wood-oval': {
+        name: '日式四格木便當盒',
+        boxClass: 'rounded-[36px] bento-wood',
+        interiorClass: 'rounded-[28px]',
+        hasDividers: true,
+        isRound: false
+      }
+    };
+
+    // 完整食材 SVG 資料庫 (LINE 貼圖粗黑手繪風 + 油亮立體美味澎湃版)
+    const FOOD_LIBRARY = [
+      // === 主食 (staple) ===
+      {
+        id: 'white-rice', name: '香Q白米飯', cat: 'staple', cal: 280, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><defs><radialGradient id="riceGrad" cx="45%" cy="35%" r="60%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="75%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#E2E8F0"/></radialGradient></defs><path d="M16 74 Q14 30 60 28 Q106 30 104 74 Q100 98 60 98 Q20 98 16 74 Z" fill="url(#riceGrad)" stroke="#102542" stroke-width="4.5"/><path d="M30 56 Q42 50 48 58 M64 46 Q76 42 82 50 M44 76 Q56 70 64 78 M72 70 Q84 65 88 74 M28 70 Q36 66 42 72" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round" fill="none"/><ellipse cx="60" cy="43" rx="4.5" ry="2.5" transform="rotate(-15 60 43)" fill="#102542"/><ellipse cx="51" cy="50" rx="4" ry="2.2" transform="rotate(20 51 50)" fill="#102542"/><ellipse cx="69" cy="49" rx="4" ry="2.2" transform="rotate(-25 69 49)" fill="#102542"/><ellipse cx="59" cy="54" rx="3.5" ry="2" fill="#102542"/></svg>`
+      },
+      {
+        id: 'fried-rice', name: '黃金蛋炒飯', cat: 'staple', cal: 420, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><defs><radialGradient id="friedRiceGrad" cx="45%" cy="35%" r="60%"><stop offset="0%" stop-color="#FEF08A"/><stop offset="65%" stop-color="#FACC15"/><stop offset="100%" stop-color="#EAB308"/></radialGradient></defs><path d="M16 76 Q18 30 60 28 Q102 30 104 76 Q98 98 60 98 Q22 98 16 76 Z" fill="url(#friedRiceGrad)" stroke="#102542" stroke-width="4.5"/><ellipse cx="42" cy="56" rx="8" ry="4.5" fill="#F59E0B"/><ellipse cx="74" cy="64" rx="9" ry="5" fill="#F59E0B"/><ellipse cx="56" cy="78" rx="8" ry="4" fill="#F59E0B"/><rect x="48" y="42" width="9" height="7" rx="2" transform="rotate(-12 52 45)" fill="#FB7185" stroke="#102542" stroke-width="2"/><rect x="74" y="48" width="8" height="7" rx="2" transform="rotate(15 78 51)" fill="#FB7185" stroke="#102542" stroke-width="2"/><rect x="34" y="68" width="8" height="6" rx="2" fill="#FB7185" stroke="#102542" stroke-width="2"/><circle cx="42" cy="76" r="4.5" fill="#16A34A" stroke="#102542" stroke-width="2"/><circle cx="68" cy="80" r="4.5" fill="#16A34A" stroke="#102542" stroke-width="2"/><circle cx="60" cy="56" r="4" fill="#16A34A" stroke="#102542" stroke-width="2"/><circle cx="82" cy="70" r="4" fill="#16A34A" stroke="#102542" stroke-width="2"/><path d="M36 42 Q48 36 58 40" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.7" fill="none"/></svg>`
+      },
+      {
+        id: 'purple-rice', name: '養生紫米飯', cat: 'staple', cal: 260, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><defs><radialGradient id="purpleGrad" cx="42%" cy="35%" r="62%"><stop offset="0%" stop-color="#8B5A7C"/><stop offset="55%" stop-color="#6B425E"/><stop offset="100%" stop-color="#4A2C40"/></radialGradient></defs><path d="M16 74 Q14 30 60 28 Q106 30 104 74 Q100 98 60 98 Q20 98 16 74 Z" fill="url(#purpleGrad)" stroke="#102542" stroke-width="4.5"/><path d="M32 54 Q44 48 50 56 M66 48 Q78 44 84 54 M44 76 Q56 70 65 78 M72 68 Q82 64 88 72 M30 68 Q38 64 44 70" stroke="#D8B4C8" stroke-width="3.5" stroke-linecap="round" fill="none"/><ellipse cx="48" cy="60" rx="4.5" ry="2.5" transform="rotate(-20 48 60)" fill="#FDE68A"/><ellipse cx="72" cy="56" rx="4.5" ry="2.5" transform="rotate(25 72 56)" fill="#FDE68A"/><ellipse cx="58" cy="70" rx="4.5" ry="2.5" transform="rotate(-10 58 70)" fill="#FEF3C7"/><ellipse cx="60" cy="43" rx="4.5" ry="2.5" fill="#FEF08A"/><ellipse cx="52" cy="49" rx="3.5" ry="2" fill="#FEF08A"/><ellipse cx="68" cy="48" rx="3.5" ry="2" fill="#FEF08A"/></svg>`
+      },
+      {
+        id: 'fried-noodles', name: '古早味炒麵', cat: 'staple', cal: 390, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="66" rx="46" ry="33" fill="#FBBF24" stroke="#102542" stroke-width="4.5"/><path d="M24 58 Q42 40 60 60 T96 56 M22 72 Q45 54 65 74 T96 68 M32 46 Q55 34 80 48 M34 82 Q60 72 86 82" stroke="#B45309" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M28 64 Q48 48 68 66 T94 62" stroke="#FEF08A" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M40 52 Q50 44 58 52 M68 70 Q76 62 84 70" stroke="#16A34A" stroke-width="6" stroke-linecap="round"/><rect x="64" y="48" width="12" height="7" rx="2.5" transform="rotate(12 70 51)" fill="#F97316" stroke="#102542" stroke-width="2"/><rect x="36" y="68" width="11" height="7" rx="2.5" transform="rotate(-15 41 71)" fill="#FB7185" stroke="#102542" stroke-width="2"/></svg>`
+      },
+
+      // === 霸氣主菜 (main) ===
+      {
+        id: 'pork-chop', name: '懷舊炸排骨', cat: 'main', cal: 380, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <defs>
+            <linearGradient id="porkGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#D97706"/>
+              <stop offset="55%" stop-color="#B45309"/>
+              <stop offset="100%" stop-color="#78350F"/>
+            </linearGradient>
+          </defs>
+          <!-- 經典排骨骨頭柄 (左上方突出一截白骨頭) -->
+          <path d="M30 42 L14 26 C9 21 16 14 22 19 L38 35" fill="#FFFBEB" stroke="#102542" stroke-width="4.5" stroke-linejoin="round"/>
+          <!-- 帶骨厚切便當排骨主體 -->
+          <path d="M26 42 Q40 24 78 28 Q104 34 100 68 Q94 94 56 92 Q24 90 26 42 Z" fill="url(#porkGrad)" stroke="#102542" stroke-width="4.5"/>
+          <!-- 便當店經典斜切條紋 (切開的排骨片感) -->
+          <path d="M32 54 L94 44 M30 70 L96 60 M36 84 L88 76" stroke="#451A03" stroke-width="4.5" stroke-linecap="round"/>
+          <!-- 油亮滷炸高光 -->
+          <path d="M36 57 L90 48 M34 73 L92 64" stroke="#FCD34D" stroke-width="2.2" stroke-linecap="round" opacity="0.75"/>
+          <circle cx="52" cy="37" r="2.5" fill="#FEF3C7"/><circle cx="76" cy="52" r="2.5" fill="#FEF3C7"/><circle cx="62" cy="83" r="2" fill="#FEF3C7"/>
+        </svg>`
+      },
+      {
+        id: 'chicken-leg', name: '香酥大雞腿', cat: 'main', cal: 410, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><defs><radialGradient id="legGrad" cx="35%" cy="35%" r="65%"><stop offset="0%" stop-color="#FB923C"/><stop offset="60%" stop-color="#EA580C"/><stop offset="100%" stop-color="#9A3412"/></radialGradient></defs><path d="M84 82 L102 98 C108 103 100 110 94 105 L78 88" fill="#FFFBEB" stroke="#102542" stroke-width="4.5" stroke-linejoin="round"/><path d="M22 40 C20 18 58 14 78 36 C94 54 94 78 80 88 C66 98 40 90 26 70 C18 56 22 46 22 40 Z" fill="url(#legGrad)" stroke="#102542" stroke-width="4.5"/><path d="M36 34 Q54 28 66 42" stroke="#FED7AA" stroke-width="5" stroke-linecap="round" fill="none"/><circle cx="46" cy="58" r="2.5" fill="#FDE68A"/><circle cx="62" cy="70" r="2.5" fill="#FDE68A"/></svg>`
+      },
+      {
+        id: 'chicken-fillet', name: '豪大大炸雞排', cat: 'main', cal: 490, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <defs>
+            <linearGradient id="filletGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FDE047"/>
+              <stop offset="50%" stop-color="#FACC15"/>
+              <stop offset="100%" stop-color="#EAB308"/>
+            </linearGradient>
+          </defs>
+          <!-- 整片無骨霸氣愛心三角大雞排輪廓 -->
+          <path d="M22 28 Q60 16 98 28 Q112 52 92 80 Q72 104 60 104 Q48 104 28 80 Q8 52 22 28 Z" fill="url(#filletGrad)" stroke="#102542" stroke-width="4.5" stroke-linejoin="round"/>
+          <!-- 卡啦酥脆麵衣鱗片波浪紋理 (未切整片豪邁感) -->
+          <path d="M28 42 Q40 34 52 42 Q64 34 76 42 Q88 34 94 42" stroke="#CA8A04" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M24 58 Q38 48 52 58 Q66 48 80 58 Q90 50 96 58" stroke="#CA8A04" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <path d="M34 74 Q48 64 60 74 Q72 64 86 74" stroke="#CA8A04" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <!-- 酥脆麵衣高光 -->
+          <path d="M32 30 Q60 22 88 30" stroke="#FEF9C3" stroke-width="4" stroke-linecap="round" fill="none"/>
+          <!-- 椒鹽顆粒點綴 -->
+          <circle cx="44" cy="48" r="2.2" fill="#102542"/><circle cx="68" cy="46" r="2.2" fill="#102542"/>
+          <circle cx="54" cy="64" r="2.2" fill="#102542"/><circle cx="74" cy="66" r="2.2" fill="#102542"/>
+          <circle cx="42" cy="80" r="2.2" fill="#102542"/><circle cx="60" cy="86" r="2.2" fill="#102542"/>
+        </svg>`
+      },
+      {
+        id: 'three-cup-chicken', name: '塔香三杯雞', cat: 'main', cal: 360, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="42" cy="56" rx="24" ry="18" fill="#9A3412" stroke="#102542" stroke-width="4"/><ellipse cx="78" cy="54" rx="23" ry="17" fill="#B45309" stroke="#102542" stroke-width="4"/><ellipse cx="60" cy="78" rx="25" ry="18" fill="#7C2D12" stroke="#102542" stroke-width="4"/><path d="M34 48 Q44 44 50 50 M70 46 Q80 42 86 48 M52 70 Q62 66 68 72" stroke="#FDBA74" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M50 36 Q62 20 74 36 Q62 46 50 36 Z" fill="#16A34A" stroke="#102542" stroke-width="3"/><path d="M28 74 Q40 62 50 74 Q38 84 28 74 Z" fill="#15803D" stroke="#102542" stroke-width="3"/><circle cx="84" cy="74" r="6.5" fill="#FDE047" stroke="#102542" stroke-width="2.5"/><path d="M88 38 L98 30" stroke="#DC2626" stroke-width="5" stroke-linecap="round"/></svg>`
+      },
+      {
+        id: 'braised-pork', name: '銷魂五花控肉', cat: 'main', cal: 450, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect x="20" y="30" width="80" height="60" rx="16" fill="#78350F" stroke="#102542" stroke-width="4.5"/><path d="M22 46 L98 46" stroke="#FEF08A" stroke-width="11"/><path d="M22 62 L98 62" stroke="#B45309" stroke-width="10"/><path d="M22 46 L98 46 M22 62 L98 62" stroke="#102542" stroke-width="2.5"/><path d="M30 37 L84 37" stroke="#FDBA74" stroke-width="3.5" stroke-linecap="round" opacity="0.8"/></svg>`
+      },
+      {
+        id: 'salmon-steak', name: '香煎鮭魚排', cat: 'main', cal: 310, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <defs>
+            <linearGradient id="salmonGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FF9E80"/>
+              <stop offset="50%" stop-color="#FF7043"/>
+              <stop offset="100%" stop-color="#E64A19"/>
+            </linearGradient>
+          </defs>
+          <!-- 酥脆魚皮邊緣 -->
+          <path d="M16 68 Q22 24 68 24 Q104 28 104 72 Q96 98 56 94 Q20 90 16 68 Z" fill="#4E342E" stroke="#102542" stroke-width="4.5"/>
+          <!-- 厚切鮭魚肉身 -->
+          <path d="M20 65 Q26 28 68 28 Q100 32 100 70 Q92 92 56 89 Q24 86 20 65 Z" fill="url(#salmonGrad)" stroke="#102542" stroke-width="3.5"/>
+          <!-- 鮭魚油脂白色紋理 -->
+          <path d="M34 34 Q46 56 38 82 M54 32 Q66 56 58 84 M74 35 Q84 56 76 82" stroke="#FFE0B2" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+          <!-- 香煎炙燒格紋 -->
+          <path d="M28 50 L88 42 M26 66 L90 58" stroke="#7F2709" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+          <!-- 黃檸檬片點綴 -->
+          <g transform="translate(76, 68) rotate(-15)">
+            <circle cx="0" cy="0" r="15" fill="#FACC15" stroke="#102542" stroke-width="3"/>
+            <circle cx="0" cy="0" r="11" fill="#FEF08A"/>
+            <path d="M-10 0 L10 0 M0 -10 L0 10 M-7 -7 L7 7 M-7 7 L7 -7" stroke="#FACC15" stroke-width="2"/>
+          </g>
+        </svg>`
+      },
+
+      // === 靈魂配菜 16 款 (sides - 全部升級為澎湃滿載份量！) ===
+      {
+        id: 'broccoli', name: '翠綠青花菜', cat: 'sides', cal: 45, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 左後花椰菜 -->
+          <g transform="translate(-14, -6) scale(0.85)">
+            <path d="M52 68 L48 94 L72 94 L68 68 Z" fill="#86EFAC" stroke="#102542" stroke-width="4"/>
+            <path d="M32 62 C20 52 26 34 42 36 C46 22 74 22 78 36 C94 34 100 52 88 62 C92 74 74 78 60 72 C46 78 28 74 32 62 Z" fill="#15803D" stroke="#102542" stroke-width="4.5"/>
+          </g>
+          <!-- 右後花椰菜 -->
+          <g transform="translate(18, -4) scale(0.85)">
+            <path d="M52 68 L48 94 L72 94 L68 68 Z" fill="#86EFAC" stroke="#102542" stroke-width="4"/>
+            <path d="M32 62 C20 52 26 34 42 36 C46 22 74 22 78 36 C94 34 100 52 88 62 C92 74 74 78 60 72 C46 78 28 74 32 62 Z" fill="#16A34A" stroke="#102542" stroke-width="4.5"/>
+          </g>
+          <!-- 前景主花椰菜 -->
+          <g transform="translate(2, 10) scale(0.92)">
+            <path d="M52 68 L48 94 L72 94 L68 68 Z" fill="#BBF7D0" stroke="#102542" stroke-width="4"/>
+            <path d="M32 62 C20 52 26 34 42 36 C46 22 74 22 78 36 C94 34 100 52 88 62 C92 74 74 78 60 72 C46 78 28 74 32 62 Z" fill="#22C55E" stroke="#102542" stroke-width="4.5"/>
+            <path d="M44 40 Q58 34 72 40" stroke="#86EFAC" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          </g>
+        </svg>`
+      },
+      {
+        id: 'cabbage', name: '清炒高麗菜', cat: 'sides', cal: 55, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 層層疊疊爽脆手撕高麗菜片 -->
+          <path d="M18 66 Q16 32 54 30 Q86 30 92 58 Q88 86 52 86 Q20 84 18 66 Z" fill="#BBF7D0" stroke="#102542" stroke-width="4"/>
+          <path d="M34 52 Q52 26 94 34 Q108 58 96 84 Q68 96 42 82 Q28 70 34 52 Z" fill="#DCFCE7" stroke="#102542" stroke-width="4"/>
+          <path d="M22 74 Q36 48 74 52 Q102 58 96 84 Q78 98 44 94 Q20 90 22 74 Z" fill="#F0FDF4" stroke="#102542" stroke-width="4"/>
+          <!-- 菜葉脈絡與油亮高光 -->
+          <path d="M32 76 Q56 64 84 76 M44 86 Q64 78 82 86 M46 44 Q68 38 86 48" stroke="#4ADE80" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <!-- 紅蘿蔔絲點綴 -->
+          <rect x="64" y="58" width="14" height="5" rx="2.5" transform="rotate(18 71 60)" fill="#F97316" stroke="#102542" stroke-width="1.8"/>
+          <rect x="38" y="66" width="13" height="5" rx="2.5" transform="rotate(-22 44 68)" fill="#FB923C" stroke="#102542" stroke-width="1.8"/>
+          <circle cx="58" cy="74" r="3" fill="#FEF08A" stroke="#102542" stroke-width="1.2"/>
+        </svg>`
+      },
+      {
+        id: 'tomato-egg', name: '番茄炒蛋', cat: 'sides', cal: 130, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="64" rx="45" ry="32" fill="#FACC15" stroke="#102542" stroke-width="4.5"/><path d="M26 58 Q42 38 56 58 Z" fill="#EF4444" stroke="#102542" stroke-width="3"/><path d="M62 66 Q80 48 92 68 Z" fill="#EF4444" stroke="#102542" stroke-width="3"/><path d="M40 76 Q56 60 68 78 Z" fill="#DC2626" stroke="#102542" stroke-width="3"/><circle cx="56" cy="48" r="4" fill="#16A34A" stroke="#102542" stroke-width="1.5"/><circle cx="74" cy="76" r="4" fill="#16A34A" stroke="#102542" stroke-width="1.5"/><path d="M32 48 Q46 42 54 46" stroke="#FEF9C3" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`
+      },
+      {
+        id: 'braised-tofu', name: '滷五香豆干', cat: 'sides', cal: 110, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect x="20" y="32" width="44" height="34" rx="8" transform="rotate(-14 42 49)" fill="#78350F" stroke="#102542" stroke-width="4"/><rect x="54" y="34" width="44" height="34" rx="8" transform="rotate(12 76 51)" fill="#92400E" stroke="#102542" stroke-width="4"/><rect x="34" y="54" width="48" height="36" rx="8" transform="rotate(-4 58 72)" fill="#B45309" stroke="#102542" stroke-width="4"/><path d="M42 62 L72 60" stroke="#FDE68A" stroke-width="3" stroke-linecap="round" opacity="0.7"/><circle cx="60" cy="48" r="4" fill="#16A34A" stroke="#102542" stroke-width="1.5"/></svg>`
+      },
+      {
+        id: 'teng-tiao', name: '靈魂三色豆', cat: 'sides', cal: 85, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="64" rx="44" ry="32" fill="#FEF08A" stroke="#102542" stroke-width="4.5"/><circle cx="38" cy="54" r="7.5" fill="#22C55E" stroke="#102542" stroke-width="2.5"/><circle cx="76" cy="68" r="7.5" fill="#22C55E" stroke="#102542" stroke-width="2.5"/><circle cx="56" cy="44" r="7" fill="#22C55E" stroke="#102542" stroke-width="2.5"/><rect x="54" y="54" width="13" height="13" rx="2.5" fill="#F97316" stroke="#102542" stroke-width="2.5"/><rect x="32" y="68" width="13" height="13" rx="2.5" fill="#F97316" stroke="#102542" stroke-width="2.5"/><rect x="74" y="46" width="12" height="12" rx="2.5" fill="#F97316" stroke="#102542" stroke-width="2.5"/><circle cx="58" cy="76" r="6.5" fill="#EAB308" stroke="#102542" stroke-width="2.5"/><circle cx="44" cy="42" r="6" fill="#EAB308" stroke="#102542" stroke-width="2.5"/><circle cx="84" cy="58" r="6" fill="#EAB308" stroke="#102542" stroke-width="2.5"/></svg>`
+      },
+      {
+        id: 'water-spinach', name: '蒜炒空心菜', cat: 'sides', cal: 50, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 以大片翠綠尖長葉片為主體的蓬鬆清炒空心菜 (與條狀四季豆明顯區隔) -->
+          <!-- 底層深綠大菜葉 -->
+          <path d="M18 68 C14 44 40 24 68 34 C56 54 44 74 18 68 Z" fill="#15803D" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M102 66 C106 42 80 24 52 36 C64 56 76 74 102 66 Z" fill="#15803D" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M24 84 C36 60 66 56 96 82 C74 96 44 96 24 84 Z" fill="#166534" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <!-- 中層嫩綠尖葉 -->
+          <path d="M26 56 C32 34 62 30 78 48 C60 64 42 68 26 56 Z" fill="#22C55E" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M94 58 C88 36 58 32 42 50 C60 66 78 68 94 58 Z" fill="#16A34A" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <!-- 前景亮綠葉片與葉脈 -->
+          <path d="M36 74 C44 52 76 52 86 74 C68 88 52 88 36 74 Z" fill="#4ADE80" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M46 72 Q60 64 74 72 M42 50 Q56 44 68 50" stroke="#BBF7D0" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- 爆香蒜片與紅辣椒圈點綴 -->
+          <ellipse cx="52" cy="46" rx="6" ry="4" fill="#FEF08A" stroke="#102542" stroke-width="2"/>
+          <ellipse cx="70" cy="64" rx="6" ry="4" fill="#FEF08A" stroke="#102542" stroke-width="2"/>
+          <circle cx="58" cy="76" r="4.5" fill="#EF4444" stroke="#102542" stroke-width="2"/>
+        </svg>`
+      },
+      {
+        id: 'kelp-knot', name: '香滷海帶結', cat: 'sides', cal: 40, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 左上角海帶結 -->
+          <g transform="translate(-14, -10) rotate(-18 60 60) scale(0.75)">
+            <path d="M32 46 Q60 28 88 46 L76 84 Q60 66 44 84 Z" fill="#14532D" stroke="#102542" stroke-width="4.5"/>
+            <rect x="48" y="48" width="24" height="22" rx="6" fill="#166534" stroke="#102542" stroke-width="4"/>
+          </g>
+          <!-- 右上角海帶結 -->
+          <g transform="translate(18, -6) rotate(22 60 60) scale(0.75)">
+            <path d="M32 46 Q60 28 88 46 L76 84 Q60 66 44 84 Z" fill="#14532D" stroke="#102542" stroke-width="4.5"/>
+            <rect x="48" y="48" width="24" height="22" rx="6" fill="#166534" stroke="#102542" stroke-width="4"/>
+          </g>
+          <!-- 下方主海帶結 -->
+          <g transform="translate(2, 14) scale(0.85)">
+            <path d="M32 46 Q60 28 88 46 L76 84 Q60 66 44 84 Z" fill="#15803D" stroke="#102542" stroke-width="4.5"/>
+            <rect x="48" y="48" width="24" height="22" rx="6" fill="#22C55E" stroke="#102542" stroke-width="4"/>
+            <path d="M52 54 L66 54" stroke="#86EFAC" stroke-width="3" stroke-linecap="round"/>
+          </g>
+        </svg>`
+      },
+      {
+        id: 'curry-potato', name: '螢光咖哩塊', cat: 'sides', cal: 165, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="66" rx="45" ry="32" fill="#FACC15" stroke="#102542" stroke-width="4.5"/><rect x="34" y="46" width="22" height="18" rx="6" fill="#FEF08A" stroke="#102542" stroke-width="3.5"/><rect x="64" y="54" width="20" height="18" rx="6" fill="#FB923C" stroke="#102542" stroke-width="3.5"/><rect x="46" y="68" width="20" height="16" rx="5" fill="#FEF9C3" stroke="#102542" stroke-width="3"/><circle cx="72" cy="44" r="4" fill="#16A34A"/></svg>`
+      },
+      {
+        id: 'corn-egg', name: '香甜玉米炒蛋', cat: 'sides', cal: 145, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="64" rx="45" ry="32" fill="#FDE047" stroke="#102542" stroke-width="4.5"/><circle cx="42" cy="54" r="5.5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="62" cy="48" r="5.5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="78" cy="64" r="5.5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="50" cy="74" r="5.5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="68" cy="76" r="5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="34" cy="68" r="5" fill="#F59E0B" stroke="#102542" stroke-width="2"/><circle cx="56" cy="62" r="3.5" fill="#16A34A"/></svg>`
+      },
+      {
+        id: 'string-beans', name: '乾煸四季豆', cat: 'sides', cal: 75, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 澎湃滿載的一大把乾煸四季豆 -->
+          <g stroke-linecap="round">
+            <!-- 底層交叉豆莢 -->
+            <path d="M22 44 Q60 30 96 42" stroke="#102542" stroke-width="14" fill="none"/>
+            <path d="M22 44 Q60 30 96 42" stroke="#15803D" stroke-width="9" fill="none"/>
+            
+            <path d="M26 80 Q62 92 96 76" stroke="#102542" stroke-width="14" fill="none"/>
+            <path d="M26 80 Q62 92 96 76" stroke="#15803D" stroke-width="9" fill="none"/>
+
+            <!-- 中層交疊豆莢 -->
+            <path d="M20 62 Q58 46 98 60" stroke="#102542" stroke-width="15" fill="none"/>
+            <path d="M20 62 Q58 46 98 60" stroke="#16A34A" stroke-width="10" fill="none"/>
+            <path d="M28 59 Q58 46 88 57" stroke="#86EFAC" stroke-width="2.5" fill="none" opacity="0.8"/>
+
+            <path d="M24 72 Q60 58 94 74" stroke="#102542" stroke-width="15" fill="none"/>
+            <path d="M24 72 Q60 58 94 74" stroke="#22C55E" stroke-width="10" fill="none"/>
+            <path d="M32 69 Q60 58 86 70" stroke="#BBF7D0" stroke-width="2.5" fill="none" opacity="0.8"/>
+
+            <!-- 斜向交錯豆莢增加立體堆疊感 -->
+            <path d="M32 34 Q64 56 88 86" stroke="#102542" stroke-width="14" fill="none"/>
+            <path d="M32 34 Q64 56 88 86" stroke="#16A34A" stroke-width="9" fill="none"/>
+            <path d="M38 38 Q64 56 82 80" stroke="#86EFAC" stroke-width="2.5" fill="none" opacity="0.8"/>
+          </g>
+          <!-- 乾煸焦香點綴 + 肉末蒜酥 -->
+          <circle cx="48" cy="48" r="3.5" fill="#92400E" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="72" cy="64" r="4" fill="#92400E" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="56" cy="74" r="3.5" fill="#B45309" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="64" cy="42" r="2.5" fill="#EF4444"/>
+        </svg>`
+      },
+      {
+        id: 'mapo-tofu', name: '下飯麻婆豆腐', cat: 'sides', cal: 150, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 濃郁紅油勾芡醬汁基底 -->
+          <ellipse cx="60" cy="66" rx="46" ry="33" fill="#B91C1C" stroke="#102542" stroke-width="4.5"/>
+          <ellipse cx="60" cy="64" rx="41" ry="27" fill="#DC2626"/>
+          <!-- 堆疊的立體方塊白嫩豆腐 (帶3D側邊陰影感) -->
+          <!-- 左上豆腐塊 -->
+          <g transform="translate(26, 38) rotate(-8)">
+            <rect x="0" y="0" width="24" height="20" rx="4" fill="#FFFFFF" stroke="#102542" stroke-width="3.2"/>
+            <path d="M2 15 L22 15 L22 18 L2 18 Z" fill="#FECACA"/>
+          </g>
+          <!-- 右上豆腐塊 -->
+          <g transform="translate(66, 36) rotate(10)">
+            <rect x="0" y="0" width="24" height="20" rx="4" fill="#FFFFFF" stroke="#102542" stroke-width="3.2"/>
+            <path d="M2 15 L22 15 L22 18 L2 18 Z" fill="#FECACA"/>
+          </g>
+          <!-- 左下豆腐塊 -->
+          <g transform="translate(28, 64) rotate(6)">
+            <rect x="0" y="0" width="25" height="21" rx="4" fill="#FFF5F5" stroke="#102542" stroke-width="3.2"/>
+            <path d="M2 16 L23 16 L23 19 L2 19 Z" fill="#FCA5A5"/>
+          </g>
+          <!-- 右下豆腐塊 -->
+          <g transform="translate(68, 62) rotate(-7)">
+            <rect x="0" y="0" width="25" height="21" rx="4" fill="#FFF5F5" stroke="#102542" stroke-width="3.2"/>
+            <path d="M2 16 L23 16 L23 19 L2 19 Z" fill="#FCA5A5"/>
+          </g>
+          <!-- 中央最上層嫩豆腐塊 -->
+          <g transform="translate(47, 50) rotate(-2)">
+            <rect x="0" y="0" width="26" height="22" rx="4.5" fill="#FFFFFF" stroke="#102542" stroke-width="3.5"/>
+            <path d="M4 5 L18 5" stroke="#FEE2E2" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+          <!-- 炒香深色肉末顆粒 -->
+          <circle cx="44" cy="46" r="3.5" fill="#78350F" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="76" cy="56" r="4" fill="#78350F" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="58" cy="78" r="3.8" fill="#78350F" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="38" cy="62" r="3" fill="#92400E"/>
+          <!-- 撒上滿滿翠綠蔥花 + 紅油亮點 -->
+          <circle cx="56" cy="44" r="4" fill="#22C55E" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="66" cy="68" r="4.2" fill="#16A34A" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="46" cy="70" r="3.8" fill="#22C55E" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="84" cy="48" r="3.5" fill="#F97316"/>
+        </svg>`
+      },
+      {
+        id: 'cucumber-salad', name: '涼拌小黃瓜', cat: 'sides', cal: 35, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 滿滿一盤堆疊的脆綠小黃瓜片 -->
+          <g>
+            <circle cx="42" cy="46" r="20" fill="#86EFAC" stroke="#15803D" stroke-width="5"/><circle cx="42" cy="46" r="22" fill="none" stroke="#102542" stroke-width="3.5"/>
+            <circle cx="76" cy="48" r="20" fill="#86EFAC" stroke="#15803D" stroke-width="5"/><circle cx="76" cy="48" r="22" fill="none" stroke="#102542" stroke-width="3.5"/>
+            <circle cx="40" cy="76" r="20" fill="#86EFAC" stroke="#15803D" stroke-width="5"/><circle cx="40" cy="76" r="22" fill="none" stroke="#102542" stroke-width="3.5"/>
+            <circle cx="76" cy="76" r="20" fill="#86EFAC" stroke="#15803D" stroke-width="5"/><circle cx="76" cy="76" r="22" fill="none" stroke="#102542" stroke-width="3.5"/>
+            <!-- 中央最上層疊一片 -->
+            <circle cx="58" cy="62" r="21" fill="#BBF7D0" stroke="#16A34A" stroke-width="5"/><circle cx="58" cy="62" r="23" fill="none" stroke="#102542" stroke-width="3.5"/>
+            <circle cx="58" cy="62" r="4" fill="#EF4444"/>
+          </g>
+        </svg>`
+      },
+      {
+        id: 'steamed-egg', name: '滑嫩日式蒸蛋', cat: 'sides', cal: 95, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="64" rx="44" ry="32" fill="#FEF08A" stroke="#102542" stroke-width="4.5"/><path d="M32 52 Q56 40 84 52" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.8" fill="none"/><circle cx="48" cy="62" r="10" fill="#FFFFFF" stroke="#FB7185" stroke-width="3.5"/><circle cx="74" cy="68" r="6" fill="#22C55E" stroke="#102542" stroke-width="2"/><ellipse cx="64" cy="52" rx="7" ry="4" fill="#92400E" stroke="#102542" stroke-width="2"/></svg>`
+      },
+      {
+        id: 'braised-eggplant', name: '塔香醬燒茄子', cat: 'sides', cal: 90, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect x="22" y="34" width="60" height="20" rx="10" transform="rotate(-14 52 44)" fill="#6B21A8" stroke="#102542" stroke-width="4"/><rect x="36" y="52" width="62" height="20" rx="10" transform="rotate(8 67 62)" fill="#7E22CE" stroke="#102542" stroke-width="4"/><rect x="24" y="70" width="60" height="20" rx="10" transform="rotate(-6 54 80)" fill="#9333EA" stroke="#102542" stroke-width="4"/><path d="M36 76 L72 74" stroke="#E9D5FF" stroke-width="3" stroke-linecap="round" opacity="0.8"/><path d="M56 48 Q66 36 74 48 Q64 56 56 48 Z" fill="#16A34A" stroke="#102542" stroke-width="2.5"/></svg>`
+      },
+      {
+        id: 'salted-egg-bitter-gourd', name: '金沙鹹蛋苦瓜', cat: 'sides', cal: 85, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 金黃鹹蛋沙醬基底 -->
+          <ellipse cx="60" cy="66" rx="44" ry="28" fill="#FDE047" stroke="#102542" stroke-width="4"/>
+          <!-- 滿滿堆疊的厚切白玉翡翠苦瓜半月片 -->
+          <g>
+            <!-- 後排苦瓜片 -->
+            <path d="M24 56 A 20 20 0 0 1 62 56 L 52 56 A 10 10 0 0 0 34 56 Z" fill="#4ADE80" stroke="#102542" stroke-width="3.8" stroke-linejoin="round"/>
+            <path d="M58 54 A 20 20 0 0 1 96 54 L 86 54 A 10 10 0 0 0 68 54 Z" fill="#86EFAC" stroke="#102542" stroke-width="3.8" stroke-linejoin="round"/>
+            <!-- 中排苦瓜片 -->
+            <path d="M20 72 A 21 21 0 0 1 60 72 L 50 72 A 11 11 0 0 0 30 72 Z" fill="#BBF7D0" stroke="#102542" stroke-width="3.8" stroke-linejoin="round"/>
+            <path d="M60 72 A 21 21 0 0 1 100 72 L 90 72 A 11 11 0 0 0 70 72 Z" fill="#4ADE80" stroke="#102542" stroke-width="3.8" stroke-linejoin="round"/>
+            <!-- 前景大苦瓜片 -->
+            <path d="M38 84 A 22 22 0 0 1 82 84 L 71 84 A 11 11 0 0 0 49 84 Z" fill="#86EFAC" stroke="#102542" stroke-width="4" stroke-linejoin="round"/>
+          </g>
+          <!-- 沙沙金黃鹹蛋黃碎與蔥花點綴 -->
+          <circle cx="42" cy="48" r="5" fill="#F59E0B" stroke="#102542" stroke-width="1.8"/>
+          <circle cx="78" cy="46" r="5" fill="#F59E0B" stroke="#102542" stroke-width="1.8"/>
+          <circle cx="60" cy="64" r="5.5" fill="#F59E0B" stroke="#102542" stroke-width="1.8"/>
+          <circle cx="36" cy="76" r="4.5" fill="#F59E0B" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="82" cy="76" r="4.5" fill="#F59E0B" stroke="#102542" stroke-width="1.5"/>
+          <circle cx="52" cy="54" r="3" fill="#16A34A"/>
+          <circle cx="68" cy="74" r="3" fill="#EF4444"/>
+        </svg>`
+      },
+      {
+        id: 'sea-kelp-phone-cord', name: '電話線(海茸)', cat: 'sides', cal: 45, isMeat: false, isVeg: true,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 三排Q彈捲捲海茸 -->
+          <path d="M24 42 C32 24, 44 60, 52 42 C60 24, 72 60, 80 42 C88 24, 96 56, 100 42" fill="none" stroke="#102542" stroke-width="14" stroke-linecap="round"/>
+          <path d="M24 42 C32 24, 44 60, 52 42 C60 24, 72 60, 80 42 C88 24, 96 56, 100 42" fill="none" stroke="#3F6212" stroke-width="8" stroke-linecap="round"/>
+
+          <path d="M20 64 C28 46, 40 82, 48 64 C56 46, 68 82, 76 64 C84 46, 94 78, 100 64" fill="none" stroke="#102542" stroke-width="14" stroke-linecap="round"/>
+          <path d="M20 64 C28 46, 40 82, 48 64 C56 46, 68 82, 76 64 C84 46, 94 78, 100 64" fill="none" stroke="#4D7C0F" stroke-width="8" stroke-linecap="round"/>
+
+          <path d="M24 84 C32 66, 44 102, 52 84 C60 66, 72 102, 80 84 C88 66, 96 96, 100 84" fill="none" stroke="#102542" stroke-width="14" stroke-linecap="round"/>
+          <path d="M24 84 C32 66, 44 102, 52 84 C60 66, 72 102, 80 84 C88 66, 96 96, 100 84" fill="none" stroke="#65A30D" stroke-width="8" stroke-linecap="round"/>
+        </svg>`
+      },
+
+      // === 蛋與小點 (egg) ===
+      {
+        id: 'sunny-egg', name: '半熟太陽蛋', cat: 'egg', cal: 110, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><path d="M20 62 Q16 30 56 26 Q96 24 100 58 Q104 92 64 94 Q24 96 20 62 Z" fill="#FFFFFF" stroke="#102542" stroke-width="4.5"/><circle cx="62" cy="58" r="19" fill="#F59E0B" stroke="#102542" stroke-width="4"/><path d="M54 49 Q62 44 68 51" stroke="#FEF3C7" stroke-width="4" stroke-linecap="round" fill="none"/></svg>`
+      },
+      {
+        id: 'braised-egg', name: '入味香滷蛋', cat: 'egg', cal: 95, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><ellipse cx="60" cy="60" rx="30" ry="38" transform="rotate(-15 60 60)" fill="#78350F" stroke="#102542" stroke-width="4.5"/><ellipse cx="50" cy="46" rx="7" ry="12" transform="rotate(-15 50 46)" fill="#B45309"/><path d="M46 40 Q50 36 54 42" stroke="#FDE68A" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`
+      },
+      {
+        id: 'taiwan-sausage', name: '台式蒜味香腸', cat: 'egg', cal: 180, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect x="20" y="34" width="72" height="28" rx="14" transform="rotate(-20 56 48)" fill="#B91C1C" stroke="#102542" stroke-width="4.5"/><rect x="28" y="56" width="72" height="28" rx="14" transform="rotate(-14 64 70)" fill="#DC2626" stroke="#102542" stroke-width="4.5"/><path d="M44 62 L48 76 M62 58 L66 72 M80 54 L84 68" stroke="#991B1B" stroke-width="3" stroke-linecap="round"/><path d="M38 62 L84 52" stroke="#FCA5A5" stroke-width="3" stroke-linecap="round" opacity="0.8"/></svg>`
+      },
+      {
+        id: 'octopus-wiener', name: '章魚小熱狗', cat: 'egg', cal: 120, isMeat: true, isVeg: false,
+        svg: `<svg viewBox="0 0 120 120" class="w-full h-full">
+          <!-- 雙胞胎章魚熱狗更熱鬧 -->
+          <g transform="translate(-16, -4) rotate(-10 60 60) scale(0.82)">
+            <path d="M42 54 C42 32 78 32 78 54 L86 84 L72 74 L60 88 L48 74 L34 84 Z" fill="#DC2626" stroke="#102542" stroke-width="4.5" stroke-linejoin="round"/>
+            <circle cx="53" cy="48" r="3" fill="#102542"/><circle cx="67" cy="48" r="3" fill="#102542"/>
+          </g>
+          <g transform="translate(18, 6) rotate(12 60 60) scale(0.85)">
+            <path d="M42 54 C42 32 78 32 78 54 L86 84 L72 74 L60 88 L48 74 L34 84 Z" fill="#EF4444" stroke="#102542" stroke-width="4.5" stroke-linejoin="round"/>
+            <circle cx="53" cy="48" r="3" fill="#102542"/><circle cx="67" cy="48" r="3" fill="#102542"/>
+            <path d="M50 38 Q60 34 68 38" stroke="#FCA5A5" stroke-width="3" stroke-linecap="round" fill="none"/>
+          </g>
+        </svg>`
+      },
+
+      // === 趣味字卡 (tag) ===
+      {
+        id: 'tag-eat-all', name: '我會吃光光！', cat: 'tag', cal: 0, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 160 80" class="w-full h-full"><rect x="6" y="10" width="148" height="60" rx="18" fill="#FFE600" stroke="#102542" stroke-width="5"/><text x="80" y="48" text-anchor="middle" font-size="21" font-weight="900" fill="#102542" font-family="sans-serif">我會吃光光！</text></svg>`
+      },
+      {
+        id: 'tag-full', name: '飽到天靈蓋', cat: 'tag', cal: 0, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 160 80" class="w-full h-full"><rect x="6" y="10" width="148" height="60" rx="18" fill="#FF6B00" stroke="#102542" stroke-width="5"/><text x="80" y="48" text-anchor="middle" font-size="21" font-weight="900" fill="#FFFFFF" font-family="sans-serif">飽到天靈蓋</text></svg>`
+      },
+      {
+        id: 'tag-grandma', name: '阿嬤怕你餓', cat: 'tag', cal: 0, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 160 80" class="w-full h-full"><rect x="6" y="10" width="148" height="60" rx="18" fill="#0077E6" stroke="#102542" stroke-width="5"/><text x="80" y="48" text-anchor="middle" font-size="21" font-weight="900" fill="#FFFFFF" font-family="sans-serif">阿嬤怕你餓</text></svg>`
+      },
+      {
+        id: 'tag-yummy', name: '超級美味💯', cat: 'tag', cal: 0, isMeat: false, isVeg: false,
+        svg: `<svg viewBox="0 0 160 80" class="w-full h-full"><rect x="6" y="10" width="148" height="60" rx="18" fill="#22C55E" stroke="#102542" stroke-width="5"/><text x="80" y="48" text-anchor="middle" font-size="21" font-weight="900" fill="#FFFFFF" font-family="sans-serif">超級美味💯</text></svg>`
+      }
+    ];
+
+    // 遊戲全域狀態
+    const gameState = {
+      boxStyle: 'iron-round',
+      activeCategory: 'staple',
+      items: [],
+      selectedUid: null,
+      nextZIndex: 10
+    };
+
+    // DOM 元素參考變數
+    let bentoBoxEl, boxInteriorEl, dividerLayoutEl, dividerGridEl, foodStageEl, emptyHintEl;
+    let boxStatLabelEl, selectedMenuListEl, menuCountBadgeEl;
+    let floatingToolbarEl, selectedFoodNameEl;
+    let btnRotate, btnFlip, btnLayerUp, btnDelete;
+    let clearBtnEl, finishBtnEl, resultModalEl, closeModalBtnEl, downloadPngBtnEl, shareCopyBtnEl, copyFeedbackEl;
+    let foodCountEl, caloriesCountEl, meatCountEl, vegCountEl;
+    let bentoTitleEl, bentoReviewEl, cardBoxCloneEl, cardMenuSummaryEl, cardBoxTypeNameEl, cardTotalCaloriesEl;
+    let foodListEl;
+
+    /**
+     * 計算四格分隔餐盒的中心點座標
+     */
+    function getSlotPositions(w, h) {
+      return [
+        { cx: w * 0.27, cy: h * 0.27 },
+        { cx: w * 0.73, cy: h * 0.27 },
+        { cx: w * 0.27, cy: h * 0.73 },
+        { cx: w * 0.73, cy: h * 0.73 }
+      ];
+    }
+
+    /**
+     * 找出最靠近的格子中心
+     */
+    function findClosestSlot(x, y, w, h) {
+      const slots = getSlotPositions(w, h);
+      let best = slots[0];
+      let minDist = Infinity;
+      slots.forEach(s => {
+        const d = Math.hypot(x - s.cx, y - s.cy);
+        if (d < minDist) {
+          minDist = d;
+          best = s;
+        }
+      });
+      return best;
+    }
+
+    /**
+     * 切換為四格模式時自動對齊既有食材
+     */
+    function realignItemsToCompartments() {
+      const stageW = foodStageEl.clientWidth || 340;
+      const stageH = foodStageEl.clientHeight || 340;
+      const slots = getSlotPositions(stageW, stageH);
+
+      let slotIndex = 0;
+      gameState.items.forEach(item => {
+        if (item.cat === 'tag') return;
+        const s = slots[slotIndex % 4];
+        slotIndex++;
+        item.x = s.cx - 65;
+        item.y = s.cy - 65;
+
+        const el = document.getElementById(item.uid);
+        if (el) {
+          el.style.transition = 'left 0.25s ease, top 0.25s ease';
+          el.style.left = `${item.x}px`;
+          el.style.top = `${item.y}px`;
+          setTimeout(() => { el.style.transition = ''; }, 260);
+        }
+      });
+    }
+
+    /**
+     * 主初始化函式
+     */
+    function init() {
+      bentoBoxEl = document.getElementById('bentoBox');
+      boxInteriorEl = document.getElementById('boxInterior');
+      dividerLayoutEl = document.getElementById('dividerLayout');
+      dividerGridEl = document.getElementById('dividerGrid');
+      foodStageEl = document.getElementById('foodStage');
+      emptyHintEl = document.getElementById('emptyHint');
+      boxStatLabelEl = document.getElementById('boxStatLabel');
+      selectedMenuListEl = document.getElementById('selectedMenuList');
+      menuCountBadgeEl = document.getElementById('menuCountBadge');
+
+      floatingToolbarEl = document.getElementById('floatingToolbar');
+      selectedFoodNameEl = document.getElementById('selectedFoodName');
+      btnRotate = document.getElementById('btnRotate');
+      btnFlip = document.getElementById('btnFlip');
+      btnLayerUp = document.getElementById('btnLayerUp');
+      btnDelete = document.getElementById('btnDelete');
+
+      clearBtnEl = document.getElementById('clearBtn');
+      finishBtnEl = document.getElementById('finishBtn');
+      resultModalEl = document.getElementById('resultModal');
+      closeModalBtnEl = document.getElementById('closeModalBtn');
+      downloadPngBtnEl = document.getElementById('downloadPngBtn');
+      shareCopyBtnEl = document.getElementById('shareCopyBtn');
+      copyFeedbackEl = document.getElementById('copyFeedback');
+
+      foodCountEl = document.getElementById('foodCount');
+      caloriesCountEl = document.getElementById('caloriesCount');
+      meatCountEl = document.getElementById('meatCount');
+      vegCountEl = document.getElementById('vegCount');
+
+      bentoTitleEl = document.getElementById('bentoTitle');
+      bentoReviewEl = document.getElementById('bentoReview');
+      cardBoxCloneEl = document.getElementById('cardBoxClone');
+      cardMenuSummaryEl = document.getElementById('cardMenuSummary');
+      cardBoxTypeNameEl = document.getElementById('cardBoxTypeName');
+      cardTotalCaloriesEl = document.getElementById('cardTotalCalories');
+
+      foodListEl = document.getElementById('foodList');
+
+      bindBoxStyleButtons();
+      bindCategoryTabs();
+      bindStageDragAndClick();
+      bindToolbarActions();
+      renderFoodOptions();
+      updateStats();
+    }
+
+    /**
+     * 綁定餐盒款式選擇按鈕 (圓形鐵盒、方形鐵盒、日式木盒)
+     */
+    function bindBoxStyleButtons() {
+      const boxBtns = document.querySelectorAll('.box-type-btn');
+      boxBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          boxBtns.forEach(b => {
+            b.classList.remove('active', 'bg-[#FFE600]', 'shadow-[0_3px_0_#102542]', '-translate-y-0.5');
+            b.classList.add('bg-white', 'border-[#102542]');
+          });
+          btn.classList.remove('bg-white');
+          btn.classList.add('active', 'bg-[#FFE600]', 'shadow-[0_3px_0_#102542]', '-translate-y-0.5');
+
+          const type = btn.getAttribute('data-box');
+          updateBoxStyle(type);
+        });
+      });
+
+      if (boxBtns[0]) {
+        boxBtns[0].classList.remove('bg-white');
+        boxBtns[0].classList.add('active', 'bg-[#FFE600]', 'shadow-[0_3px_0_#102542]', '-translate-y-0.5');
+      }
+    }
+
+    /**
+     * 渲染右側廚房備料區食材卡片
+     */
+    function renderFoodOptions() {
+      if (!foodListEl) return;
+      foodListEl.innerHTML = '';
+
+      const filtered = FOOD_LIBRARY.filter(item => item.cat === gameState.activeCategory);
+      filtered.forEach(item => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'cute-btn flex flex-col items-center justify-between p-2 rounded-2xl bg-[#FFFDF5] hover:bg-sky-50 text-[#102542] cursor-pointer';
+        card.innerHTML = `
+          <div class="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center pointer-events-none">
+            ${item.svg}
+          </div>
+          <span class="text-[11px] sm:text-xs font-black text-center leading-tight mt-1 line-clamp-1">${item.name}</span>
+          <span class="text-[10px] font-bold text-[#0077E6] mt-0.5">${item.cal > 0 ? item.cal + ' kcal' : '趣味字卡'}</span>
+        `;
+
+        card.addEventListener('click', () => {
+          addFoodToBento(item);
+        });
+
+        foodListEl.appendChild(card);
+      });
+    }
+
+    /**
+     * 切換餐盒風格樣式 (維持四格分隔並依圓/方形調整格線邊角)
+     */
+    function updateBoxStyle(type) {
+      gameState.boxStyle = type;
+      const preset = BOX_PRESETS[type];
+      boxStatLabelEl.innerText = preset.name;
+
+      bentoBoxEl.className = `relative w-[330px] h-[330px] sm:w-[370px] sm:h-[370px] transition-all duration-300 overflow-hidden flex items-center justify-center ${preset.boxClass}`;
+      boxInteriorEl.className = `w-[92%] h-[92%] relative overflow-hidden bg-[#FFFDF7] shadow-inner flex items-center justify-center border-2 border-[#102542]/20 ${preset.interiorClass}`;
+
+      dividerLayoutEl.classList.remove('hidden');
+      const markers = dividerGridEl.querySelectorAll('.slot-marker');
+      if (preset.isRound) {
+        dividerGridEl.className = 'w-full h-full grid grid-cols-2 grid-rows-2 gap-2 p-4';
+        markers[0].className = 'slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-tl-full bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black';
+        markers[1].className = 'slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-tr-full bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black';
+        markers[2].className = 'slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-bl-full bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black';
+        markers[3].className = 'slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-br-full bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black';
+      } else {
+        dividerGridEl.className = 'w-full h-full grid grid-cols-2 grid-rows-2 gap-2 p-3';
+        markers[0].className = 'slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-xl bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black';
+        markers[1].className = 'slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-xl bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black';
+        markers[2].className = 'slot-marker border-[2.5px] border-dashed border-[#FF6B00]/45 rounded-xl bg-orange-50/60 flex items-center justify-center text-xs text-[#FF6B00]/50 font-black';
+        markers[3].className = 'slot-marker border-[2.5px] border-dashed border-[#0077E6]/45 rounded-xl bg-sky-50/60 flex items-center justify-center text-xs text-[#0077E6]/50 font-black';
+      }
+      realignItemsToCompartments();
+    }
+
+    /**
+     * 綁定類別切換頁籤 (亮橘色選中態)
+     */
+    function bindCategoryTabs() {
+      const tabs = document.querySelectorAll('.category-btn');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => {
+            t.classList.remove('active', 'bg-[#FF6B00]', 'text-white', 'shadow-[0_3px_0_#102542]');
+            t.classList.add('bg-sky-100', 'text-[#102542]');
+          });
+          tab.classList.remove('bg-sky-100', 'text-[#102542]');
+          tab.classList.add('active', 'bg-[#FF6B00]', 'text-white', 'shadow-[0_3px_0_#102542]');
+
+          gameState.activeCategory = tab.getAttribute('data-cat');
+          renderFoodOptions();
+        });
+      });
+      tabs[0].classList.remove('bg-sky-100', 'text-[#102542]');
+      tabs[0].classList.add('active', 'bg-[#FF6B00]', 'text-white', 'shadow-[0_3px_0_#102542]');
+    }
+
+    /**
+     * 加入食材進便當舞台 (固定大滿版尺寸，免手動調縮放，完整填格)
+     */
+    function addFoodToBento(foodItem) {
+      const stageW = foodStageEl.clientWidth || 340;
+      const stageH = foodStageEl.clientHeight || 340;
+      const isCompartment = BOX_PRESETS[gameState.boxStyle].hasDividers;
+
+      let targetX = 0;
+      let targetY = 0;
+
+      if (isCompartment && foodItem.cat !== 'tag') {
+        // 自動吸附到尚未佔滿的空格中
+        const slots = getSlotPositions(stageW, stageH);
+        const slotIdx = gameState.items.length % 4;
+        const s = slots[slotIdx];
+        targetX = s.cx - 65;
+        targetY = s.cy - 65;
+      } else {
+        // 自由模式：置中或微偏，滿版飽滿呈現
+        const offset = () => (Math.random() - 0.5) * 45;
+        targetX = (stageW / 2) - 65 + offset();
+        targetY = (stageH / 2) - 65 + offset();
+      }
+
+      const itemInstance = {
+        uid: 'item_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        id: foodItem.id,
+        name: foodItem.name,
+        cat: foodItem.cat,
+        cal: foodItem.cal,
+        isMeat: foodItem.isMeat,
+        isVeg: foodItem.isVeg,
+        svg: foodItem.svg,
+        x: targetX,
+        y: targetY,
+        rot: 0,
+        flip: 1,
+        zIndex: gameState.nextZIndex++
+      };
+
+      gameState.items.push(itemInstance);
+      createFoodDomElement(itemInstance);
+      selectItem(itemInstance.uid);
+      updateStats();
+    }
+
+    /**
+     * 建立食材 DOM 與拖曳吸附填格監聽
+     */
+    function createFoodDomElement(item) {
+      const el = document.createElement('div');
+      el.id = item.uid;
+      el.className = 'absolute food-svg select-none cursor-grab flex items-center justify-center';
+      
+      // 滿版大氣尺寸 (主食/主菜/配菜 130px，字卡 140x75px)，飽滿充實
+      if (item.cat === 'tag') {
+        el.style.width = '140px';
+        el.style.height = '75px';
+      } else {
+        el.style.width = '130px';
+        el.style.height = '130px';
+      }
+      
+      el.style.left = `${item.x}px`;
+      el.style.top = `${item.y}px`;
+      el.style.zIndex = item.zIndex;
+      el.innerHTML = item.svg;
+
+      let isDragging = false;
+      let startX, startY;
+      let initLeft, initTop;
+
+      const onStart = (e) => {
+        e.stopPropagation();
+        selectItem(item.uid);
+
+        isDragging = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        startX = clientX;
+        startY = clientY;
+        initLeft = parseFloat(el.style.left) || 0;
+        initTop = parseFloat(el.style.top) || 0;
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      };
+
+      const onMove = (e) => {
+        if (!isDragging) return;
+        if (e.cancelable && e.type === 'touchmove') e.preventDefault();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        let newX = initLeft + dx;
+        let newY = initTop + dy;
+
+        const stageWidth = foodStageEl.clientWidth;
+        const stageHeight = foodStageEl.clientHeight;
+        newX = Math.max(-25, Math.min(newX, stageWidth - 105));
+        newY = Math.max(-25, Math.min(newY, stageHeight - 105));
+
+        el.style.left = `${newX}px`;
+        el.style.top = `${newY}px`;
+
+        item.x = newX;
+        item.y = newY;
+      };
+
+      const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+
+        // 如果是四宮格餐盒且非標籤，拖曳放開時自動平滑吸附進入最近的格子中！
+        const isCompartment = BOX_PRESETS[gameState.boxStyle].hasDividers;
+        if (isCompartment && item.cat !== 'tag') {
+          const stageW = foodStageEl.clientWidth;
+          const stageH = foodStageEl.clientHeight;
+          const foodCenterX = item.x + 65;
+          const foodCenterY = item.y + 65;
+          const closestSlot = findClosestSlot(foodCenterX, foodCenterY, stageW, stageH);
+
+          item.x = closestSlot.cx - 65;
+          item.y = closestSlot.cy - 65;
+
+          el.style.transition = 'left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          el.style.left = `${item.x}px`;
+          el.style.top = `${item.y}px`;
+
+          setTimeout(() => {
+            el.style.transition = '';
+          }, 220);
+        }
+      };
+
+      el.addEventListener('mousedown', onStart);
+      el.addEventListener('touchstart', onStart, { passive: false });
+
+      foodStageEl.appendChild(el);
+      updateElementTransform(item);
+    }
+
+    /**
+     * 更新食材 Transform
+     */
+    function updateElementTransform(item) {
+      const el = document.getElementById(item.uid);
+      if (!el) return;
+      el.style.transform = `scale(${item.flip}, 1) rotate(${item.rot}deg)`;
+    }
+
+    /**
+     * 選取特定食材
+     */
+    function selectItem(uid) {
+      gameState.selectedUid = uid;
+      
+      document.querySelectorAll('.food-svg').forEach(el => {
+        if (el.id === uid) {
+          el.classList.add('selected');
+        } else {
+          el.classList.remove('selected');
+        }
+      });
+
+      const selected = gameState.items.find(i => i.uid === uid);
+      if (selected) {
+        selectedFoodNameEl.innerText = selected.name;
+        floatingToolbarEl.classList.remove('hidden');
+        floatingToolbarEl.classList.add('flex');
+      } else {
+        floatingToolbarEl.classList.add('hidden');
+        floatingToolbarEl.classList.remove('flex');
+      }
+    }
+
+    /**
+     * 綁定舞台背景點擊 (取消選取)
+     */
+    function bindStageDragAndClick() {
+      foodStageEl.addEventListener('click', (e) => {
+        if (e.target === foodStageEl || e.target === boxInteriorEl) {
+          selectItem(null);
+        }
+      });
+    }
+
+    /**
+     * 工具列按鈕操作 (旋轉、翻面、圖層、刪除)
+     */
+    function bindToolbarActions() {
+      // 順時針旋轉 45 度
+      btnRotate.addEventListener('click', () => {
+        const item = gameState.items.find(i => i.uid === gameState.selectedUid);
+        if (item) {
+          item.rot = (item.rot + 45) % 360;
+          updateElementTransform(item);
+        }
+      });
+
+      // 水平鏡像翻轉
+      btnFlip.addEventListener('click', () => {
+        const item = gameState.items.find(i => i.uid === gameState.selectedUid);
+        if (item) {
+          item.flip = item.flip === 1 ? -1 : 1;
+          updateElementTransform(item);
+        }
+      });
+
+      // 圖層移至最上層
+      btnLayerUp.addEventListener('click', () => {
+        const item = gameState.items.find(i => i.uid === gameState.selectedUid);
+        if (item) {
+          item.zIndex = gameState.nextZIndex++;
+          const el = document.getElementById(item.uid);
+          if (el) el.style.zIndex = item.zIndex;
+        }
+      });
+
+      // 刪除此食材
+      btnDelete.addEventListener('click', () => {
+        if (!gameState.selectedUid) return;
+        deleteItemByUid(gameState.selectedUid);
+      });
+
+      // 全部重夾
+      clearBtnEl.addEventListener('click', () => {
+        if (gameState.items.length === 0) return;
+        foodStageEl.innerHTML = '';
+        gameState.items = [];
+        selectItem(null);
+        updateStats();
+      });
+
+      // 一鍵輸出貼圖存檔成 PNG
+      downloadPngBtnEl.addEventListener('click', () => {
+        exportBentoToPng();
+      });
+
+      // 完成開動按鈕
+      finishBtnEl.addEventListener('click', () => {
+        showCompletionModal();
+      });
+
+      // 關閉完成彈窗
+      closeModalBtnEl.addEventListener('click', () => {
+        resultModalEl.classList.add('hidden');
+      });
+
+      // 複製短評 (帶有自訂標語：我的午餐餐盒我決定)
+      shareCopyBtnEl.addEventListener('click', () => {
+        const reviewText = `🍱 我的午餐餐盒我決定！\n餐盒樣式：${BOX_PRESETS[gameState.boxStyle].name}\n豪華菜色：共 ${gameState.items.length} 樣好料 (${bentoTitleEl.innerText})\n估計熱量：${caloriesCountEl.innerText} kcal\n餐盒評語：${bentoReviewEl.innerText}\n#我的午餐餐盒 #我的午餐餐盒我決定`;
+        
+        const dummyInput = document.createElement('textarea');
+        dummyInput.value = reviewText;
+        document.body.appendChild(dummyInput);
+        dummyInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(dummyInput);
+
+        copyFeedbackEl.classList.remove('opacity-0');
+        setTimeout(() => {
+          copyFeedbackEl.classList.add('opacity-0');
+        }, 2200);
+      });
+    }
+
+    /**
+     * 刪除指定 uid 的食材
+     */
+    function deleteItemByUid(uid) {
+      const index = gameState.items.findIndex(i => i.uid === uid);
+      if (index > -1) {
+        const el = document.getElementById(uid);
+        if (el) el.remove();
+        gameState.items.splice(index, 1);
+        if (gameState.selectedUid === uid) {
+          selectItem(null);
+        }
+        updateStats();
+      }
+    }
+
+    /**
+     * 渲染餐盒上方的即時菜單明細列 (煮過頭出餐訂單標籤)
+     */
+    function renderSelectedMenu() {
+      if (!selectedMenuListEl) return;
+      selectedMenuListEl.innerHTML = '';
+
+      if (gameState.items.length === 0) {
+        selectedMenuListEl.innerHTML = `<span class="text-[11px] text-slate-500 font-bold italic px-1">點擊右側食材區備料入盒，出餐明細會同步顯示於此！</span>`;
+        menuCountBadgeEl.innerText = '尚未夾菜';
+        menuCountBadgeEl.className = 'text-[10px] bg-white text-[#102542] font-black px-2 py-0.5 rounded-full border border-[#102542]';
+        return;
+      }
+
+      menuCountBadgeEl.innerText = `已出餐 ${gameState.items.length} 道`;
+      menuCountBadgeEl.className = 'text-[10px] bg-[#FF6B00] text-white font-black px-2 py-0.5 rounded-full border border-[#102542]';
+
+      gameState.items.forEach(item => {
+        const tag = document.createElement('div');
+        const isSelected = item.uid === gameState.selectedUid;
+        tag.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer border-2 border-[#102542] ${
+          isSelected 
+            ? 'bg-[#FF6B00] text-white shadow-[0_2px_0_#102542] -translate-y-0.5' 
+            : 'bg-white hover:bg-sky-50 text-[#102542] shadow-[0_2px_0_#102542]'
+        }`;
+        tag.innerHTML = `
+          <span>${item.name}</span>
+          <button title="移除此菜色" class="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
+            isSelected ? 'bg-[#102542]/40 hover:bg-[#102542] text-white' : 'bg-slate-200 text-[#102542] hover:bg-rose-500 hover:text-white'
+          }">✕</button>
+        `;
+
+        // 點擊標籤直接選中該食材並彈出工具列
+        tag.addEventListener('click', (e) => {
+          if (e.target.tagName.toLowerCase() !== 'button') {
+            selectItem(item.uid);
+          }
+        });
+
+        // 點擊 ✖ 刪除
+        const delBtn = tag.querySelector('button');
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteItemByUid(item.uid);
+        });
+
+        selectedMenuListEl.appendChild(tag);
+      });
+    }
+
+    /**
+     * 即時更新便當菜色統計
+     */
+    function updateStats() {
+      const count = gameState.items.length;
+      foodCountEl.innerText = count;
+
+      const totalCal = gameState.items.reduce((sum, item) => sum + (item.cal || 0), 0);
+      caloriesCountEl.innerText = totalCal;
+
+      const meatCount = gameState.items.filter(i => i.isMeat).length;
+      const vegCount = gameState.items.filter(i => i.isVeg).length;
+
+      meatCountEl.innerText = meatCount;
+      vegCountEl.innerText = vegCount;
+
+      if (count > 0) {
+        emptyHintEl.classList.add('opacity-0');
+      } else {
+        emptyHintEl.classList.remove('opacity-0');
+      }
+
+      // 同步更新菜單列
+      renderSelectedMenu();
+    }
+
+    /**
+     * 一鍵將所選餐盒與擺盤 + 菜色整理小立牌真實輸出為高畫質 PNG 貼圖
+     */
+    function exportBentoToPng() {
+      const originalText = downloadPngBtnEl.innerHTML;
+      downloadPngBtnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 製作貼圖中...`;
+      downloadPngBtnEl.disabled = true;
+
+      // 暫時取消食物選取紅框以保證截圖美觀
+      const prevSelectedUid = gameState.selectedUid;
+      selectItem(null);
+
+      // 建立離屏容器：上方為真實餐盒，下方為揀選的菜色整理小立牌
+      const exportContainer = document.createElement('div');
+      exportContainer.style.position = 'fixed';
+      exportContainer.style.left = '-9999px';
+      exportContainer.style.top = '-9999px';
+      exportContainer.style.width = '460px';
+      exportContainer.style.display = 'flex';
+      exportContainer.style.flexDirection = 'column';
+      exportContainer.style.alignItems = 'center';
+      exportContainer.style.justifyContent = 'center';
+      exportContainer.style.backgroundColor = 'transparent';
+      exportContainer.style.padding = '24px 20px';
+      exportContainer.style.gap = '16px';
+
+      // 複製主舞台上的真實便當盒 (包含 boxStyle 的 CSS、陰影與邊框)
+      const cloneBox = bentoBoxEl.cloneNode(true);
+      cloneBox.style.margin = '0';
+      cloneBox.style.transform = 'none';
+      cloneBox.style.boxShadow = '0 10px 0 #102542, 0 18px 28px rgba(16, 37, 66, 0.28)';
+
+      // 移除提示文字浮水印
+      const hintInClone = cloneBox.querySelector('#emptyHint');
+      if (hintInClone) hintInClone.remove();
+
+      // 建立美式廚房風格的「揀選菜色整理小立牌」
+      const standSign = document.createElement('div');
+      standSign.style.width = '410px';
+      standSign.style.backgroundColor = '#FFFDF5';
+      standSign.style.border = '4px solid #102542';
+      standSign.style.borderRadius = '22px';
+      standSign.style.boxShadow = '0 6px 0 #102542';
+      standSign.style.padding = '12px 16px';
+      standSign.style.fontFamily = "'Fredoka', 'Zen Maru Gothic', 'Noto Sans TC', sans-serif";
+      standSign.style.position = 'relative';
+
+      const totalCal = gameState.items.reduce((sum, item) => sum + (item.cal || 0), 0);
+      const foodItems = gameState.items.filter(i => i.cat !== 'tag');
+      const tagItems = gameState.items.filter(i => i.cat === 'tag');
+
+      // 立牌頂部標題列
+      const headerRow = document.createElement('div');
+      headerRow.style.display = 'flex';
+      headerRow.style.alignItems = 'center';
+      headerRow.style.justifyContent = 'space-between';
+      headerRow.style.borderBottom = '2.5px dashed rgba(16, 37, 66, 0.25)';
+      headerRow.style.paddingBottom = '6px';
+      headerRow.style.marginBottom = '8px';
+      headerRow.innerHTML = `
+        <span style="font-size: 15px; font-weight: 900; color: #FF6B00;">🍱 ${BOX_PRESETS[gameState.boxStyle].name}</span>
+        <span style="font-size: 12px; font-weight: 900; background: #FFE600; color: #102542; padding: 2px 10px; border-radius: 999px; border: 2px solid #102542;">我的午餐餐盒我決定</span>
+      `;
+      standSign.appendChild(headerRow);
+
+      // 菜色標籤列表區
+      const listWrap = document.createElement('div');
+      listWrap.style.display = 'flex';
+      listWrap.style.flexWrap = 'wrap';
+      listWrap.style.gap = '6px';
+      listWrap.style.alignItems = 'center';
+
+      if (foodItems.length === 0 && tagItems.length === 0) {
+        listWrap.innerHTML = `<span style="font-size: 13px; font-weight: 800; color: #64748B;">尚未夾取菜色（空氣特製餐盒）</span>`;
+      } else {
+        foodItems.forEach(item => {
+          const pill = document.createElement('span');
+          pill.style.backgroundColor = '#E0F2FE';
+          pill.style.color = '#102542';
+          pill.style.border = '2px solid #102542';
+          pill.style.borderRadius = '10px';
+          pill.style.padding = '2px 9px';
+          pill.style.fontSize = '13px';
+          pill.style.fontWeight = '900';
+          pill.innerText = `• ${item.name}`;
+          listWrap.appendChild(pill);
+        });
+        tagItems.forEach(tag => {
+          const pill = document.createElement('span');
+          pill.style.backgroundColor = '#FFEDD5';
+          pill.style.color = '#C2410C';
+          pill.style.border = '2px solid #102542';
+          pill.style.borderRadius = '10px';
+          pill.style.padding = '2px 9px';
+          pill.style.fontSize = '13px';
+          pill.style.fontWeight = '900';
+          pill.innerText = `★ ${tag.name}`;
+          listWrap.appendChild(pill);
+        });
+      }
+      standSign.appendChild(listWrap);
+
+      // 立牌底部總熱量與道數註記
+      const footerRow = document.createElement('div');
+      footerRow.style.marginTop = '8px';
+      footerRow.style.paddingTop = '6px';
+      footerRow.style.borderTop = '2px solid rgba(16, 37, 66, 0.1)';
+      footerRow.style.display = 'flex';
+      footerRow.style.justifyContent = 'space-between';
+      footerRow.style.fontSize = '12px';
+      footerRow.style.fontWeight = '900';
+      footerRow.style.color = '#0077E6';
+      footerRow.innerHTML = `
+        <span>共精選 ${foodItems.length} 道好料</span>
+        <span>估計總熱量：${totalCal} kcal</span>
+      `;
+      standSign.appendChild(footerRow);
+
+      exportContainer.appendChild(cloneBox);
+      exportContainer.appendChild(standSign);
+      document.body.appendChild(exportContainer);
+
+      // 調用 html2canvas 進行高解析度渲染 (截取包含餐盒與菜色小立牌的完整容器)
+      if (typeof html2canvas !== 'undefined') {
+        html2canvas(exportContainer, {
+          backgroundColor: null,
+          scale: 2, // 2倍高清輸出
+          useCORS: true,
+          logging: false
+        }).then(canvas => {
+          const dataUrl = canvas.toDataURL('image/png');
+          triggerDownload(dataUrl);
+          cleanup();
+        }).catch(err => {
+          console.error('html2canvas error:', err);
+          fallbackCanvasExport();
+          cleanup();
+        });
+      } else {
+        fallbackCanvasExport();
+        cleanup();
+      }
+
+      function cleanup() {
+        if (exportContainer && exportContainer.parentNode) {
+          exportContainer.parentNode.removeChild(exportContainer);
+        }
+        if (prevSelectedUid) selectItem(prevSelectedUid);
+        downloadPngBtnEl.innerHTML = originalText;
+        downloadPngBtnEl.disabled = false;
+      }
+    }
+
+    /**
+     * 觸發瀏覽器下載圖片
+     */
+    function triggerDownload(dataUrl) {
+      const link = document.createElement('a');
+      link.download = `我的午餐餐盒_${Date.now()}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    /**
+     * 備援 Canvas 繪製輸出 (在無外網或離線時使用)
+     */
+    function fallbackCanvasExport() {
+      const canvas = document.createElement('canvas');
+      const size = 640;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = size * 0.44;
+      const boxStyle = gameState.boxStyle;
+
+      // 繪製對應樣式的外盒
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 10;
+
+      if (boxStyle === 'iron-round') {
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#eaf0f5');
+        grad.addColorStop(0.5, '#ccd5dc');
+        grad.addColorStop(1, '#b6c2cb');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#9aa7b2';
+        ctx.stroke();
+      } else if (boxStyle === 'wood-oval') {
+        ctx.fillStyle = '#f6eedb';
+        roundRect(ctx, cx - r * 0.95, cy - r * 0.95, r * 1.9, r * 1.9, 72, true, true, '#c2a17a', 10);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(1, '#d8dee4');
+        ctx.fillStyle = grad;
+        roundRect(ctx, cx - r * 0.95, cy - r * 0.95, r * 1.9, r * 1.9, 48, true, true, '#9aa7b2', 8);
+      }
+      ctx.restore();
+
+      const dataUrl = canvas.toDataURL('image/png');
+      triggerDownload(dataUrl);
+    }
+
+    /**
+     * Canvas 輔助圓角矩形繪製函數
+     */
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke, strokeColor = '#000', strokeWidth = 1) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) {
+        ctx.save();
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = strokeWidth;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    /**
+     * 產生完成開動總評與圖卡
+     */
+    function showCompletionModal() {
+      const totalCal = gameState.items.reduce((sum, item) => sum + (item.cal || 0), 0);
+      const meatCount = gameState.items.filter(i => i.isMeat).length;
+      const vegCount = gameState.items.filter(i => i.isVeg).length;
+      const hasStaple = gameState.items.some(i => i.cat === 'staple');
+      const hasEatAllTag = gameState.items.some(i => i.id === 'tag-eat-all');
+
+      let title = "特製開動便當！";
+      let review = "我的午餐餐盒我決定！開動啦，每一口都超滿足～";
+
+      if (gameState.items.length === 0) {
+        title = "空空如也空氣便當";
+        review = "餐盒空空的！我的午餐餐盒我決定，趕緊多夾幾道好料吧！";
+      } else if (hasEatAllTag) {
+        title = "惜福滿分！我會吃光光餐盒";
+        review = "一粒米也不浪費，我的午餐餐盒我決定，絕對吃光光！";
+      } else if (meatCount >= 3 && vegCount === 0) {
+        title = "肉肉狂潮！肉食主義便當";
+        review = "大口吃肉無負擔，我的午餐餐盒我決定，肉汁滿滿超過癮！";
+      } else if (vegCount >= 3 && meatCount === 0) {
+        title = "清爽健康！綠意蔬食餐盒";
+        review = "滿滿膳食纖維，腸胃好舒服！我的午餐餐盒我決定～";
+      } else if (gameState.items.some(i => i.id === 'teng-tiao')) {
+        title = "靈魂考驗！三色豆勇者便當";
+        review = "主動夾了靈魂三色豆！這份霸氣值得頒發榮譽勳章！";
+      } else if (hasStaple && meatCount >= 1 && vegCount >= 2) {
+        title = "黃金比例！營養師點讚餐盒";
+        review = "主食蔬菜蛋白質通通有，營養滿分又美味！我的午餐餐盒我決定！";
+      }
+
+      if (bentoTitleEl) bentoTitleEl.innerText = title;
+      if (bentoReviewEl) bentoReviewEl.innerText = review;
+      if (cardBoxTypeNameEl) cardBoxTypeNameEl.innerText = BOX_PRESETS[gameState.boxStyle].name;
+      if (cardTotalCaloriesEl) cardTotalCaloriesEl.innerText = totalCal;
+
+      // 同步更新結算畫面中的「今日菜色小立牌」
+      if (cardMenuSummaryEl) {
+        cardMenuSummaryEl.innerHTML = '';
+        if (gameState.items.length === 0) {
+          cardMenuSummaryEl.innerHTML = `<span class="text-slate-400 italic">尚未夾取任何菜色</span>`;
+        } else {
+          gameState.items.forEach(item => {
+            const badge = document.createElement('span');
+            badge.className = item.cat === 'tag'
+              ? 'bg-orange-100 text-orange-800 border border-[#102542] px-2 py-0.5 rounded-lg'
+              : 'bg-sky-100 text-[#102542] border border-[#102542] px-2 py-0.5 rounded-lg';
+            badge.innerText = item.name;
+            cardMenuSummaryEl.appendChild(badge);
+          });
+        }
+      }
+
+      cloneBentoToCard();
+      resultModalEl.classList.remove('hidden');
+    }
+
+    /**
+     * 克隆便當舞台至結算預覽框
+     */
+    function cloneBentoToCard() {
+      cardBoxCloneEl.innerHTML = '';
+      
+      const preset = BOX_PRESETS[gameState.boxStyle];
+      cardBoxCloneEl.className = `w-48 h-48 sm:w-56 sm:h-56 relative overflow-hidden flex items-center justify-center ${preset.boxClass}`;
+
+      const interior = document.createElement('div');
+      interior.className = `w-[92%] h-[92%] relative overflow-hidden bg-amber-50/50 ${preset.interiorClass}`;
+
+      if (preset.hasDividers) {
+        const div = document.createElement('div');
+        if (preset.isRound) {
+          div.className = "absolute inset-0 pointer-events-none grid grid-cols-2 grid-rows-2 gap-1.5 p-3";
+          div.innerHTML = `
+            <div class="border border-dashed border-sky-700/30 rounded-tl-full"></div>
+            <div class="border border-dashed border-orange-700/30 rounded-tr-full"></div>
+            <div class="border border-dashed border-orange-700/30 rounded-bl-full"></div>
+            <div class="border border-dashed border-sky-700/30 rounded-br-full"></div>
+          `;
+        } else {
+          div.className = "absolute inset-0 pointer-events-none grid grid-cols-2 grid-rows-2 gap-1.5 p-2";
+          div.innerHTML = `
+            <div class="border border-dashed border-sky-700/30 rounded-lg"></div>
+            <div class="border border-dashed border-orange-700/30 rounded-lg"></div>
+            <div class="border border-dashed border-orange-700/30 rounded-lg"></div>
+            <div class="border border-dashed border-sky-700/30 rounded-lg"></div>
+          `;
+        }
+        interior.appendChild(div);
+      }
+
+      const stageW = foodStageEl.clientWidth || 340;
+      const targetW = 200;
+      const ratio = targetW / stageW;
+
+      gameState.items.forEach(item => {
+        const foodNode = document.createElement('div');
+        foodNode.className = 'absolute pointer-events-none select-none flex items-center justify-center';
+        
+        const w = (item.cat === 'tag' ? 140 : 130) * ratio;
+        const h = (item.cat === 'tag' ? 75 : 130) * ratio;
+        foodNode.style.width = `${w}px`;
+        foodNode.style.height = `${h}px`;
+        foodNode.style.left = `${item.x * ratio}px`;
+        foodNode.style.top = `${item.y * ratio}px`;
+        foodNode.style.zIndex = item.zIndex;
+        foodNode.style.transform = `scale(${item.flip}, 1) rotate(${item.rot}deg)`;
+        foodNode.innerHTML = item.svg;
+        interior.appendChild(foodNode);
+      });
+
+      cardBoxCloneEl.appendChild(interior);
+    }
+
+    // 啟動遊戲
+    window.onload = function() {
+      init();
+    };
+  </script>
+</body>
+</html>
